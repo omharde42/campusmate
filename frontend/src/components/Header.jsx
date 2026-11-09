@@ -4,14 +4,23 @@ import {
   Contrast,
   Eye,
   GraduationCap,
+  LogOut,
   Menu,
   Moon,
   Sun,
   Type,
+  UserRound,
   X,
 } from "lucide-react";
 
-const NAV = [
+// Public navigation (visible to signed-out visitors).
+const PUBLIC_NAV = [
+  ["home", "Overview"],
+  ["how", "How it works"],
+];
+
+// Navigation for a signed-in student.
+const STUDENT_NAV = [
   ["home", "Overview"],
   ["chat", "Ask CampusMate"],
   ["notices", "Noticeboard"],
@@ -31,15 +40,23 @@ export default function Header({
   reduceMotion,
   onReduceMotion,
   mode,
+  student,
+  onSignIn,
+  onSignUp,
+  onLogout,
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const nav = student ? STUDENT_NAV : PUBLIC_NAV;
 
   const go = (target) => {
     setMenuOpen(false);
     setSettingsOpen(false);
     onNavigate(target);
   };
+
+  const firstName = student?.full_name?.split(" ")[0] || "Student";
 
   return (
     <header className="topbar">
@@ -54,7 +71,7 @@ export default function Header({
       </button>
 
       <nav className={`nav ${menuOpen ? "open" : ""}`} aria-label="Primary">
-        {NAV.map(([target, label]) => (
+        {nav.map(([target, label]) => (
           <button
             key={target}
             className={`nav-link ${page === target ? "active" : ""}`}
@@ -76,15 +93,30 @@ export default function Header({
         >
           <Accessibility size={19} />
         </button>
-        <button className="btn btn-small btn-outline" onClick={() => go("tickets")}>
-          Raise a ticket
-        </button>
-        <button
-          className="btn btn-small btn-primary desktop-only"
-          onClick={() => go("admin")}
-        >
-          Admin
-        </button>
+
+        {student ? (
+          <>
+            <span className="user-chip" title={student.email}>
+              <span className="avatar">
+                <UserRound size={15} />
+              </span>
+              <span className="user-name">{firstName}</span>
+            </span>
+            <button className="btn btn-small btn-outline" onClick={onLogout}>
+              <LogOut size={14} /> Sign out
+            </button>
+          </>
+        ) : (
+          <>
+            <button className="btn btn-small btn-outline" onClick={onSignIn}>
+              Sign in
+            </button>
+            <button className="btn btn-small btn-primary desktop-signup" onClick={onSignUp}>
+              Create account
+            </button>
+          </>
+        )}
+
         <button
           className="icon-btn mobile-menu-btn"
           aria-label="Open navigation"

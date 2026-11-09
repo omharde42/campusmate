@@ -1,4 +1,4 @@
-import { GraduationCap, ExternalLink } from "lucide-react";
+import { GraduationCap } from "lucide-react";
 
 const LINKS = [
   ["home", "Overview"],
@@ -9,7 +9,8 @@ const LINKS = [
   ["testing", "Testing plan"],
 ];
 
-export default function Footer({ onNavigate }) {
+export default function Footer({ onNavigate, student }) {
+  const links = student ? LINKS : LINKS.filter(([id]) => id === "home" || id === "how");
   return (
     <footer className="footer">
       <div className="footer-inner">
@@ -25,19 +26,16 @@ export default function Footer({ onNavigate }) {
           </div>
         </div>
         <nav className="footer-links" aria-label="Footer">
-          {LINKS.map(([target, label]) => (
+          {links.map(([target, label]) => (
             <button key={target} onClick={() => onNavigate(target)}>
               {label}
             </button>
           ))}
-          <button onClick={() => onNavigate("admin")} className="footer-admin">
-            Admin workspace <ExternalLink size={12} />
-          </button>
         </nav>
         <div className="footer-bottom">
           <span>CAMPUSMATE · SMART STUDENT HELPDESK CHATBOT</span>
           <span>
-            Presentation mode · Anonymous · Synthetic sample data only
+            Presentation mode · Synthetic sample data only
           </span>
         </div>
       </div>

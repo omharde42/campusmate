@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from .config import settings
 from .database import get_db
-from .models import Admin
+from .models import Admin, Student
 
 ALGORITHM = "HS256"
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -34,6 +34,16 @@ def create_access_token(subject: str, role: str) -> str:
     return jwt.encode(payload, settings.secret_key, algorithm=ALGORITHM)
 
 
+def _decode_subject(token: str | None) -> str | None:
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
+    except jwt.PyJWTError:
+        return None
+    return payload.get("sub")
+
+
 def get_current_admin(
     token: str | None = Depends(oauth2_scheme), db: Session = Depends(get_db)
 ) -> Admin:
@@ -42,13 +52,7 @@ def get_current_admin(
         detail="Not authenticated",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    if not token:
-        raise credentials_error
-    try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
-        email: str | None = payload.get("sub")
-    except jwt.PyJWTError:
-        raise credentials_error
+    email = _decode_subject(token)
     if not email:
         raise credentials_error
 
@@ -56,6 +60,24 @@ def get_current_admin(
     if admin is None or not admin.is_active:
         raise credentials_error
     return admin
+
+
+def get_current_student(
+    token: str | None = Depends(oauth2_scheme), db: Session = Depends(get_db)
+) -> Student:
+    credentials_error = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Not authenticated",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    email = _decode_subject(token)
+    if not email:
+        raise credentials_error
+
+    student = db.scalar(select(Student).where(Student.email == email))
+    if student is None or not student.is_active:
+        raise credentials_error
+    return student
 
 
 def require_publisher(admin: Admin = Depends(get_current_admin)) -> Admin:

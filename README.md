@@ -35,6 +35,9 @@ API reference: [docs/API.md](docs/API.md).
 
 **Student side**
 
+- Public home intro page before sign-in, with sign-up / sign-in entry points.
+- Self-service student accounts (sign-up and sign-in); the chatbot, noticeboard
+  and helpdesk tickets are available once signed in.
 - Natural-language chat across five official categories: **Admissions, Fees,
   Examinations, Timetables, College activities**.
 - Three explicit answer states: `answered`, `needs_context`, `escalated`.
@@ -87,12 +90,14 @@ npm run dev
 #    -> http://localhost:5173
 ```
 
-The first backend start seeds synthetic sample notices automatically. Sign in to
-the admin workspace with the demo credentials below.
+The first backend start seeds synthetic sample notices automatically. Students
+create their own account from the **Create account** page; staff sign in to the
+admin workspace with credentials supplied through the environment.
 
-> **Demo credentials (sample only):**
-> `admin@campusmate.demo` / `campusmate-demo`
-> Change these via environment variables before any real use.
+> **Admin credentials are private.** No admin email or password is shown in the
+> UI or committed to the repository. Set `SEED_ADMIN_EMAIL` /
+> `SEED_ADMIN_PASSWORD` (and `SECRET_KEY`) in your environment before deploying,
+> and keep them out of source control.
 
 ---
 
@@ -217,7 +222,7 @@ placeholders below after publishing — do not invent URLs.
 | --- | --- |
 | GitHub repository | `https://github.com/<owner>/<repo>` (placeholder) |
 | Deployed application | `https://<your-deployment-host>` (placeholder) |
-| Demo login | `admin@campusmate.demo` / `campusmate-demo` (sample) |
+| Demo login | Students self-register (public). Admin credentials come from the environment (`SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`) and are never published. |
 
 Deployment notes: [docs/SETUP.md](docs/SETUP.md).
 

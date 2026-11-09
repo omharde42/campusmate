@@ -208,11 +208,39 @@ Change status. Allowed: `open`, `pending`, `in_progress`, `resolved`, `closed`.
 
 ## Authentication
 
-Admin routes live under the `/auth` prefix.
+Two independent account types share the `/auth` prefix. Student routes are
+public (self sign-up / sign-in); staff routes require a provisioned admin
+account and never expose credentials through the API.
+
+### `POST /auth/student/signup`
+```json
+{
+  "full_name": "Asha Rao",
+  "email": "asha@example.com",
+  "password": "at-least-8-chars",
+  "programme": "BSc CS",
+  "semester": "1"
+}
+```
+Creates a student account and returns
+`{ "access_token": "...", "token_type": "bearer", "account": { ... } }`.
+`409` if the email already exists; `422` if the password is shorter than 8
+characters. The plain password is never returned — only a bcrypt hash is stored.
+
+### `POST /auth/student/login`
+```json
+{ "email": "asha@example.com", "password": "at-least-8-chars" }
+```
+Returns the same token + account shape. `401` on bad credentials.
+
+### `GET /auth/student/me`
+Current authenticated student (`Authorization: Bearer <student token>`).
 
 ### `POST /auth/login`
+Staff (admin) sign-in. Credentials are supplied through the deployment
+environment (`SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`); none are published.
 ```json
-{ "email": "admin@campusmate.demo", "password": "campusmate-demo" }
+{ "email": "<admin email>", "password": "<admin password>" }
 ```
 Returns `{ "access_token": "...", "token_type": "bearer" }`.
 
@@ -222,6 +250,10 @@ Swagger "Authorize" button).
 
 ### `GET /auth/me`
 Current authenticated admin.
+
+Student and admin tokens are not interchangeable: a student token is rejected by
+admin routes (`/auth/me`, `/admin/*`) with `401`, and an admin token is rejected
+by `/auth/student/me`.
 
 ---
 

@@ -38,6 +38,37 @@ class AdminOut(BaseModel):
     role: str
 
 
+class StudentSignup(BaseModel):
+    full_name: str = Field(min_length=2, max_length=255)
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+    programme: str | None = Field(default=None, max_length=64)
+    semester: str | None = Field(default=None, max_length=16)
+
+
+class StudentLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class StudentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: EmailStr
+    full_name: str
+    programme: str | None = None
+    semester: str | None = None
+
+
+class AuthToken(BaseModel):
+    """Access token plus the signed-in account, so the UI can greet the user."""
+
+    access_token: str
+    token_type: str = "bearer"
+    account: StudentOut
+
+
 # ---------------------------------------------------------------------------
 # Chat
 # ---------------------------------------------------------------------------

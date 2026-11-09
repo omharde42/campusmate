@@ -25,7 +25,7 @@ uvicorn app.main:app --reload --port 8000      # http://localhost:8000/docs
 # frontend (from frontend/)
 npm run dev                                     # http://localhost:5173
 # tests (from repo root)
-python -m pytest                                # 124 tests
+python -m pytest                                # 132 tests
 python tests/run_validation.py                  # 50-question validation
 # docker (from repo root)
 cp .env.example .env && docker compose up --build   # :8080 frontend, :8000 api
@@ -33,7 +33,12 @@ cp .env.example .env && docker compose up --build   # :8080 frontend, :8000 api
 vercel dev                                          # runs backend + frontend locally
 ```
 
-Demo admin: `admin@campusmate.demo` / `campusmate-demo`.
+**Accounts**: students self-register (public sign-up/sign-in); the chatbot,
+noticeboard and tickets require a signed-in student. Admin (staff) accounts are
+provisioned from the environment — there is no public admin sign-up and no
+credentials are shown or pre-filled in the UI. Set `SEED_ADMIN_EMAIL` /
+`SEED_ADMIN_PASSWORD` (and a strong `SECRET_KEY`) in the environment; the demo
+admin password defaults to empty so no secret lives in the repo.
 
 ## Key conventions
 
@@ -57,7 +62,7 @@ Demo admin: `admin@campusmate.demo` / `campusmate-demo`.
 
 ## Verified state
 
-- `python -m pytest` → 124 passed.
+- `python -m pytest` → 132 passed.
 - Validation harness → 25/25 supported answers, 100% citation coverage, 0
   unsupported guesses (demo build, stub models).
 - Full `docker compose` stack (PostgreSQL + pgvector) verified end-to-end:

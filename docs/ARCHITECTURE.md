@@ -11,7 +11,7 @@ escalation to a helpdesk ticket.
 ┌──────────────────────────────┐        ┌────────────────────────────────────┐
 │  Frontend (React + Vite)     │  HTTP  │  Backend (FastAPI)                 │
 │                              │ /api/* │                                    │
-│  Landing / Chat / Source     │ ─────▶ │  routers/                          │
+│  Home intro / Auth / Chat    │ ─────▶ │  routers/                          │
 │  Noticeboard / Tickets       │        │    chat · documents · tickets · auth│
 │  Admin workspace             │ ◀───── │  services/                         │
 │                              │  JSON  │    retrieval · answer_policy        │
@@ -23,9 +23,10 @@ escalation to a helpdesk ticket.
                                         │  PostgreSQL + pgvector              │
                                         │  (SQLite + JSON vectors for demo)   │
                                         │                                    │
-                                        │  admins · knowledge_versions        │
-                                        │  documents · passages · tickets     │
-                                        │  ticket_messages · chat_logs        │
+                                        │  admins · students · knowledge_     │
+                                        │  versions · documents · passages    │
+                                        │  tickets · ticket_messages          │
+                                        │  chat_logs                          │
                                         └────────────────────────────────────┘
 ```
 
@@ -101,6 +102,14 @@ environment variables server-side and are never sent to the frontend.
 
 ## Security controls
 
+- Two account types: public **student** sign-up/sign-in and provisioned staff
+  (**admin**) accounts. Passwords are bcrypt-hashed; only hashes are stored.
+- The chatbot, noticeboard and helpdesk tickets require a signed-in student; the
+  public home intro is the only unauthenticated page with content.
+- Admin credentials are supplied through the deployment environment, never
+  committed to the repository and never shown or pre-filled in the UI.
+- Student and admin JWTs are scoped by role: a student token cannot reach
+  `/admin/*` or `/auth/me`, and an admin token cannot reach `/auth/student/me`.
 - Staff authentication (JWT) with role checks; upload/publish require the
   `admin` or `publisher` role.
 - Document-level authorisation before retrieval and before serving source files.

@@ -37,6 +37,9 @@ services:
       EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-hashing}
       EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
       CAMPUSMATE_SEED: "1"
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+      SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-CampusMate Administrator}
       UPLOAD_DIR: /app/storage/documents
     volumes:
       - upload_data:/app/storage/documents
