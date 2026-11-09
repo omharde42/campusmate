@@ -25,10 +25,12 @@ uvicorn app.main:app --reload --port 8000      # http://localhost:8000/docs
 # frontend (from frontend/)
 npm run dev                                     # http://localhost:5173
 # tests (from repo root)
-python -m pytest                                # 119 tests
+python -m pytest                                # 124 tests
 python tests/run_validation.py                  # 50-question validation
 # docker (from repo root)
 cp .env.example .env && docker compose up --build   # :8080 frontend, :8000 api
+# vercel services (from repo root)
+vercel dev                                          # runs backend + frontend locally
 ```
 
 Demo admin: `admin@campusmate.demo` / `campusmate-demo`.
@@ -55,7 +57,7 @@ Demo admin: `admin@campusmate.demo` / `campusmate-demo`.
 
 ## Verified state
 
-- `python -m pytest` → 119 passed.
+- `python -m pytest` → 124 passed.
 - Validation harness → 25/25 supported answers, 100% citation coverage, 0
   unsupported guesses (demo build, stub models).
 - Full `docker compose` stack (PostgreSQL + pgvector) verified end-to-end:
@@ -73,3 +75,12 @@ Demo admin: `admin@campusmate.demo` / `campusmate-demo`.
   `/auth/me`).
 - Frontend `VITE_API_TARGET` (dev) / nginx `proxy_pass` (prod) must point at the
   backend for `/api` calls to work.
+- Vercel services (`vercel.json`): `/api/(.*)` → `backend`, `/(.*)` →
+  `frontend`. Vercel forwards the original path, so the app auto-sets
+  `root_path=/api` when `VERCEL`/`VERCEL_ENV` is present; nginx (Docker) strips
+  `/api` itself, so `root_path` stays empty there. `app.main:create_app(root_path=...)`
+  builds the app for tests.
+- Vercel's filesystem is read-only except `/tmp`, so the config falls back to
+  `/tmp` for the SQLite DB and uploads when on Vercel (or when the cwd is not
+  writable). That store is ephemeral — set `DATABASE_URL` to hosted PostgreSQL
+  for persistence. Missing source files are regenerated from stored passages.

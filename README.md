@@ -111,6 +111,26 @@ the backend). See [docs/SETUP.md](docs/SETUP.md) for details.
 
 ---
 
+## Deploy on Vercel (services)
+
+The root `vercel.json` deploys both the FastAPI backend and the Vite frontend as
+services in one Vercel project. `/api/*` routes to the backend and every other
+path to the frontend, on the same domain:
+
+```bash
+vercel dev      # run both services locally
+vercel --prod   # deploy
+```
+
+The app detects Vercel automatically and uses `/api` as its route prefix plus
+`/tmp` for its writable files, so the demo works after deployment. Set
+`SECRET_KEY` (required) and, for persistent data, `DATABASE_URL` to a hosted
+PostgreSQL database — the default SQLite store lives in `/tmp` and does not
+persist across requests. See
+[docs/SETUP.md](docs/SETUP.md#option-c--vercel-services) for the full guide.
+
+---
+
 ## Using real models (optional)
 
 The demo runs offline with deterministic stub adapters. To use hosted models,
@@ -157,6 +177,7 @@ campusmate/
 ├── docker-compose.yml
 ├── Dockerfile.backend
 ├── Dockerfile.frontend
+├── vercel.json          Vercel services (backend + frontend)
 ├── .env.example
 └── README.md
 ```

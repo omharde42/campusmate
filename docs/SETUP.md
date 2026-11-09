@@ -70,6 +70,90 @@ Stop with `docker compose down`. Add `-v` to also delete volumes (data).
 
 ---
 
+## Option C — Vercel (services)
+
+The repository root `vercel.json` deploys the FastAPI backend and the Vite
+frontend as two **services** in a single Vercel project, with shared routing on
+one domain:
+
+```json
+{
+  "services": {
+    "backend": { "root": "backend", "framework": "fastapi", "entrypoint": "app.main:app" },
+    "frontend": { "root": "frontend", "framework": "vite" }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": { "service": "backend" } },
+    { "source": "/(.*)", "destination": { "service": "frontend" } }
+  ]
+}
+```
+
+`/api/*` is routed to the backend; every other path goes to the frontend. Both
+services are internal by default and only receive traffic through these
+top-level rewrites, so the frontend and API share one Vercel domain.
+
+The platform forwards the original path, so a request to `/api/chat` reaches the
+backend as `/api/chat` (it is not stripped). The app detects a Vercel deployment
+(`VERCEL` / `VERCEL_ENV`) and automatically sets `root_path` to `/api`, so its
+routes match and the OpenAPI docs plus the citation `open_url` links stay
+correct. No manual `ROOT_PATH` is needed on Vercel; set it explicitly only if you
+mount the API somewhere other than `/api`.
+
+### Storage on Vercel
+
+Vercel Functions have a **read-only filesystem** with a writable `/tmp` scratch
+space, and the working directory is not writable. When the app detects Vercel (or
+a non-writable working directory) its writable defaults move to `/tmp`, so it
+boots and the seeded demo works out of the box:
+
+| Setting | Local / Docker default | Vercel default |
+| --- | --- | --- |
+| `DATABASE_URL` | `sqlite:///./campusmate.db` | `sqlite:////tmp/campusmate.db` |
+| `UPLOAD_DIR` | `./storage/documents` | `/tmp/campusmate-documents` |
+
+**Persistence:** `/tmp` is per-instance and ephemeral, so on Vercel the default
+SQLite database (and any uploaded source files) do **not** persist across
+invocations — each cold instance re-seeds the synthetic sample data. The public
+site, chat, citations and source viewer all work; admin edits and student
+tickets may be lost between requests. This is fine for a demo but not for real
+use.
+
+**To persist data**, set `DATABASE_URL` to a hosted PostgreSQL database (for
+example [Neon](https://neon.tech), which Vercel integrates with). The app creates
+the `vector` extension and tables automatically on first start, and re-seeds the
+sample notices into it. Uploaded source PDFs are regenerated from the stored
+passages when a file is missing, so source viewing keeps working even without a
+shared filesystem.
+
+Example connection string (use the pooled URL from your provider):
+
+```
+DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
+```
+
+`postgres://` URLs (as some providers hand out) are normalised to
+`postgresql://` automatically.
+
+### Required environment variables (Vercel)
+
+Set these in **Project → Settings → Environment Variables**:
+
+| Variable | Required? | Notes |
+| --- | --- | --- |
+| `SECRET_KEY` | Yes | Long random string; signs admin JWTs. Do not use the default. |
+| `DATABASE_URL` | For persistence | Hosted PostgreSQL URL. Omit for the ephemeral `/tmp` demo. |
+| `CAMPUSMATE_SEED` | Optional | `1` (default) seeds the sample notices; `0` starts empty. |
+| `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | Optional | Override the demo admin credentials. |
+| `LLM_PROVIDER` / `LLM_API_KEY` | Optional | `openai` + key to use a hosted model; default offline `stub`. |
+| `EMBEDDING_PROVIDER` / `EMBEDDING_API_KEY` | Optional | `openai` + key to use hosted embeddings; default `hashing`. |
+
+Do not set `ROOT_PATH` unless you change the public prefix.
+
+Run everything locally with `vercel dev` from the repository root.
+
+---
+
 ## Configuration
 
 All settings are environment variables (see `.env.example`). Key ones:
@@ -86,6 +170,7 @@ All settings are environment variables (see `.env.example`). Key ones:
 | `CAMPUSMATE_SEED` | `1` seeds demo data on start, `0` starts empty |
 | `UPLOAD_DIR`, `MAX_UPLOAD_MB` | Where notices are stored and size limit |
 | `CORS_ORIGINS` | Comma-separated allowed origins |
+| `ROOT_PATH` | Public path prefix the API is served under (e.g. `/api` on Vercel); empty for local/Docker |
 
 Never commit a real `.env`. `.gitignore` excludes it.
 
