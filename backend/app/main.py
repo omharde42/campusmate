@@ -32,41 +32,47 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(
-    title="CampusMate API",
-    description=(
-        "Smart Student Helpdesk Chatbot — retrieval-augmented answers grounded "
-        "in college-approved notices, with citations, clarification and a "
-        "helpdesk ticket fallback. Ships with synthetic SAMPLE data only."
-    ),
-    version="1.0.0",
-    lifespan=lifespan,
-)
+def create_app(root_path: str | None = None) -> FastAPI:
+    """Build the ASGI app. ``root_path`` defaults to the ``ROOT_PATH`` setting."""
+    app = FastAPI(
+        title="CampusMate API",
+        description=(
+            "Smart Student Helpdesk Chatbot — retrieval-augmented answers grounded "
+            "in college-approved notices, with citations, clarification and a "
+            "helpdesk ticket fallback. Ships with synthetic SAMPLE data only."
+        ),
+        version="1.0.0",
+        lifespan=lifespan,
+        root_path=settings.root_path if root_path is None else root_path,
+    )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origin_list,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origin_list,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
-app.include_router(auth.router)
-app.include_router(chat.router)
-app.include_router(documents.router)
-app.include_router(tickets.router)
+    app.include_router(auth.router)
+    app.include_router(chat.router)
+    app.include_router(documents.router)
+    app.include_router(tickets.router)
+
+    @app.get("/health", tags=["meta"])
+    def health() -> dict:
+        return {
+            "status": "ok",
+            "environment": settings.environment,
+            "llm_provider": settings.llm_provider,
+            "embedding_provider": settings.embedding_provider,
+        }
+
+    @app.get("/meta/categories", tags=["meta"])
+    def categories() -> dict:
+        return {"categories": CATEGORIES}
+
+    return app
 
 
-@app.get("/health", tags=["meta"])
-def health() -> dict:
-    return {
-        "status": "ok",
-        "environment": settings.environment,
-        "llm_provider": settings.llm_provider,
-        "embedding_provider": settings.embedding_provider,
-    }
-
-
-@app.get("/meta/categories", tags=["meta"])
-def categories() -> dict:
-    return {"categories": CATEGORIES}
+app = create_app()

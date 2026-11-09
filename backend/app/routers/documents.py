@@ -19,7 +19,7 @@ from __future__ import annotations
 import os
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -35,6 +35,7 @@ from ..schemas import (
 from ..security import get_current_admin, require_publisher
 from ..services import documents as doc_service
 from ..services import publishing
+from ..services.pdf_writer import build_pdf
 from ..services.retrieval import source_status
 
 router = APIRouter(tags=["documents"])
@@ -75,17 +76,40 @@ def open_source(doc_uid: str, db: Session = Depends(get_db)):
 
     Only documents that are published (current), replaced, or retired are
     servable. Draft documents are never exposed.
+
+    On ephemeral hosts (e.g. serverless instances) the stored file may be gone
+    even though the document row persists. In that case the source PDF is
+    regenerated from the document's indexed passages so the source viewer keeps
+    working.
     """
     document = db.scalar(select(Document).where(Document.doc_uid == doc_uid))
     if document is None or document.status == "draft":
         raise HTTPException(status_code=404, detail="Source not available")
-    if not document.stored_path or not os.path.exists(document.stored_path):
+    if document.stored_path and os.path.exists(document.stored_path):
+        return FileResponse(
+            document.stored_path,
+            media_type="application/pdf",
+            filename=os.path.basename(document.stored_path),
+        )
+
+    content = _rebuild_source_pdf(document)
+    if content is None:
         raise HTTPException(status_code=404, detail="Source file missing")
-    return FileResponse(
-        document.stored_path,
+    return Response(
+        content,
         media_type="application/pdf",
-        filename=os.path.basename(document.stored_path),
+        headers={"Content-Disposition": f'inline; filename="{document.doc_uid}.pdf"'},
     )
+
+
+def _rebuild_source_pdf(document: Document) -> bytes | None:
+    """Regenerate a source PDF from the indexed passages (best effort)."""
+    lines: list[str] = [document.title]
+    for passage in sorted(document.passages, key=lambda p: (p.page_number, p.ordinal)):
+        lines.extend(line for line in passage.content.splitlines() if line.strip())
+    if len(lines) <= 1:
+        return None
+    return build_pdf(lines, title=document.title)
 
 
 # ---------------------------------------------------------------------------

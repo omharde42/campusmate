@@ -30,6 +30,34 @@ def test_source_of_unknown_document_is_404(client):
     assert client.get("/documents/nope/source").status_code == 404
 
 
+def test_source_is_regenerated_when_stored_file_is_gone(client):
+    """Ephemeral hosts may lose the stored file; the source must still open."""
+    import os
+
+    doc_uid = client.get("/documents").json()[0]["doc_uid"]
+    detail = client.get(f"/documents/{doc_uid}").json()
+
+    # Simulate a serverless instance whose temp files were discarded.
+    from app.database import SessionLocal
+    from app.models import Document
+    from sqlalchemy import select
+
+    db = SessionLocal()
+    try:
+        document = db.scalar(select(Document).where(Document.doc_uid == doc_uid))
+        stored_path = document.stored_path
+        if stored_path and os.path.exists(stored_path):
+            os.remove(stored_path)
+    finally:
+        db.close()
+
+    resp = client.get(f"/documents/{doc_uid}/source")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "application/pdf"
+    assert resp.content[:5] == b"%PDF-"
+    assert detail["passages"], "regeneration needs indexed passages"
+
+
 def test_draft_documents_are_never_public(client, auth_headers):
     # Upload a draft (not published) and confirm it is hidden from students.
     files = {"file": ("draft.pdf", _minimal_pdf(), "application/pdf")}

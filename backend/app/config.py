@@ -4,9 +4,33 @@ All configuration is read from environment variables so that no secrets are
 ever committed to the repository. See ``.env.example`` for the full list.
 """
 
+import os
+import tempfile
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Vercel Functions run on a read-only filesystem with a writable /tmp scratch
+# space, and their working directory is not writable. When we detect a Vercel
+# deployment (or a non-writable working directory) the writable defaults below
+# move to the system temp directory so the app boots. Override DATABASE_URL /
+# UPLOAD_DIR for persistent storage (see docs/SETUP.md).
+_ON_VERCEL = bool(os.getenv("VERCEL") or os.getenv("VERCEL_ENV"))
+_SCRATCH_DIR = tempfile.gettempdir()
+_USE_SCRATCH = _ON_VERCEL or not os.access(os.getcwd(), os.W_OK)
+
+
+def _default_database_url() -> str:
+    if _USE_SCRATCH:
+        return f"sqlite:///{_SCRATCH_DIR}/campusmate.db"
+    return "sqlite:///./campusmate.db"
+
+
+def _default_upload_dir() -> str:
+    if _USE_SCRATCH:
+        return os.path.join(_SCRATCH_DIR, "campusmate-documents")
+    return "./storage/documents"
 
 
 class Settings(BaseSettings):
@@ -15,10 +39,27 @@ class Settings(BaseSettings):
     app_name: str = "CampusMate API"
     environment: str = "development"
 
+    # --- Public path prefix -------------------------------------------------
+    # Set to the public mount path when the API is served behind a gateway that
+    # forwards the prefix (e.g. the Vercel services rewrite "/api/(.*)" ->
+    # backend). Starlette strips ``root_path`` before matching routes, so the
+    # OpenAPI docs and citation ``open_url`` links stay correct. Defaults to
+    # /api on Vercel; empty elsewhere, where nginx strips /api itself.
+    root_path: str = "/api" if _ON_VERCEL else ""
+
     # --- Database -----------------------------------------------------------
     # Defaults to a local SQLite file so the project runs with zero setup.
     # docker-compose overrides this with a PostgreSQL + pgvector URL.
-    database_url: str = "sqlite:///./campusmate.db"
+    database_url: str = _default_database_url()
+
+    @field_validator("database_url")
+    @classmethod
+    def _normalize_database_url(cls, value: str) -> str:
+        # Some providers hand out "postgres://" URLs, which SQLAlchemy 2.x no
+        # longer recognises (it expects "postgresql://").
+        if value.startswith("postgres://"):
+            return "postgresql://" + value[len("postgres://") :]
+        return value
 
     # --- Auth ---------------------------------------------------------------
     # CHANGE THIS IN PRODUCTION. Kept here only so the demo runs out of the box.
@@ -48,7 +89,7 @@ class Settings(BaseSettings):
     retrieval_min_coverage: float = 0.5
 
     # --- Uploads ------------------------------------------------------------
-    upload_dir: str = "./storage/documents"
+    upload_dir: str = _default_upload_dir()
     max_upload_mb: int = 20
 
     # --- CORS ---------------------------------------------------------------
