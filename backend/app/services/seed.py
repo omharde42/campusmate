@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..models import Admin, Document
-from ..security import hash_password
+from ..security import hash_password, verify_password
 from . import documents as doc_service
 from . import publishing
 from .pdf_writer import build_pdf
@@ -174,17 +174,29 @@ SAMPLE_NOTICES: list[dict] = [
 ]
 
 
-def seed_admin(db: Session) -> Admin:
-    email = os.getenv("SEED_ADMIN_EMAIL", "admin@campusmate.demo")
+def seed_admin(db: Session) -> Admin | None:
+    """Create the seeded administrator from configuration (private, no UI hint).
+
+    Returns ``None`` when ``SEED_ADMIN_PASSWORD`` is empty, so a deployment can
+    start with no built-in admin at all. The stored password is refreshed to the
+    configured value when it no longer matches, so rotating the secret in the
+    hosting environment (e.g. Vercel) takes effect on the next start.
+    """
+    email = settings.seed_admin_email.strip()
+    password = settings.seed_admin_password
+    if not email or not password:
+        return None
+
     existing = db.scalar(select(Admin).where(Admin.email == email))
     if existing:
+        if not verify_password(password, existing.hashed_password):
+            existing.hashed_password = hash_password(password)
         return existing
+
     admin = Admin(
         email=email,
-        full_name=os.getenv("SEED_ADMIN_NAME", "Demo Administrator"),
-        hashed_password=hash_password(
-            os.getenv("SEED_ADMIN_PASSWORD", "campusmate-demo")
-        ),
+        full_name=settings.seed_admin_name,
+        hashed_password=hash_password(password),
         role="admin",
     )
     db.add(admin)
@@ -244,7 +256,7 @@ def seed_demo_data(db: Session) -> dict:
             stored_path=path,
             knowledge_version_id=version.id,
             replaces_document_id=replace_target.id if replace_target else None,
-            uploaded_by_id=admin.id,
+            uploaded_by_id=admin.id if admin else None,
         )
         db.add(document)
         db.flush()
@@ -255,7 +267,7 @@ def seed_demo_data(db: Session) -> dict:
         created.append(document.doc_uid)
 
     return {
-        "admin_email": admin.email,
+        "admin_email": admin.email if admin else None,
         "knowledge_version": version.label,
         "created_documents": created,
     }

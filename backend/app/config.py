@@ -66,6 +66,16 @@ class Settings(BaseSettings):
     secret_key: str = "change-me-in-production"
     access_token_expire_minutes: int = 60 * 8
 
+    # --- Seeded administrator (private) -------------------------------------
+    # The admin account is created from these values on first start. The
+    # password defaults to empty, so a deployment starts with NO built-in admin
+    # until you set SEED_ADMIN_PASSWORD in the environment (e.g. Vercel project
+    # settings). No credential is committed to the repository, and these values
+    # are never exposed through the public API or UI.
+    seed_admin_email: str = "admin@campusmate.demo"
+    seed_admin_password: str = ""
+    seed_admin_name: str = "CampusMate Administrator"
+
     # --- Model adapters -----------------------------------------------------
     # When no API key is configured the app falls back to deterministic,
     # offline implementations so the demo never depends on a paid service.

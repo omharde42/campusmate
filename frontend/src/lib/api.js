@@ -11,7 +11,11 @@ import { offlineAnswer, OFFLINE_NOTICES } from "./offlineEngine.js";
 
 const BASE = import.meta.env.VITE_API_BASE || "/api";
 
+// Admin (staff) session is short-lived and kept in sessionStorage. The student
+// session is kept in localStorage so a signed-in student stays signed in.
 let authToken = sessionStorage.getItem("cm-admin-token") || null;
+let studentToken = localStorage.getItem("cm-student-token") || null;
+let studentAccount = JSON.parse(localStorage.getItem("cm-student") || "null");
 
 export function getMode() {
   return mode;
@@ -24,7 +28,10 @@ function setMode(next) {
 
 async function request(path, { method = "GET", body, form, auth = false } = {}) {
   const headers = {};
-  if (authToken) headers.Authorization = `Bearer ${authToken}`;
+  // `auth: "student"` uses the student token; any other truthy value uses the
+  // staff token (kept for backwards compatibility with the admin calls).
+  const token = auth === "student" ? studentToken : auth ? authToken : null;
+  if (token) headers.Authorization = `Bearer ${token}`;
   let payload;
   if (form) {
     payload = form;
@@ -129,6 +136,62 @@ export function getTicket(reference) {
     () => request(`/tickets/${reference}`),
     () => null
   );
+}
+
+// ---------------------------------------------------------------------------
+// Students (public sign-up / sign-in)
+// ---------------------------------------------------------------------------
+export async function studentSignup(payload) {
+  const data = await request("/auth/student/signup", {
+    method: "POST",
+    body: payload,
+  });
+  persistStudent(data);
+  return data;
+}
+
+export async function studentLogin(email, password) {
+  const data = await request("/auth/student/login", {
+    method: "POST",
+    body: { email, password },
+  });
+  persistStudent(data);
+  return data;
+}
+
+function persistStudent(data) {
+  studentToken = data.access_token;
+  studentAccount = data.account;
+  localStorage.setItem("cm-student-token", studentToken);
+  localStorage.setItem("cm-student", JSON.stringify(studentAccount));
+}
+
+export function studentLogout() {
+  studentToken = null;
+  studentAccount = null;
+  localStorage.removeItem("cm-student-token");
+  localStorage.removeItem("cm-student");
+}
+
+export function isStudentLoggedIn() {
+  return Boolean(studentToken);
+}
+
+export function currentStudent() {
+  return studentAccount;
+}
+
+export async function refreshStudent() {
+  if (!studentToken) return null;
+  try {
+    studentAccount = await request("/auth/student/me", { auth: "student" });
+    localStorage.setItem("cm-student", JSON.stringify(studentAccount));
+    return studentAccount;
+  } catch (error) {
+    // An expired or invalid token should not keep the UI "signed in".
+    if (error.status === 401) studentLogout();
+    return null;
+  }
 }
 
 // ---------------------------------------------------------------------------

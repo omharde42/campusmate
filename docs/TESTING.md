@@ -35,7 +35,7 @@ model adapters, so it needs no network and no API key.
 | `test_units.py` | Retrieval scoring, answer policy, sanitisation, evidence checks |
 | `test_validation_dataset.py` | Runs the 50-question dataset and asserts policy guarantees |
 
-Current result for this build: **124 tests passing**.
+Current result for this build: **132 tests passing**.
 
 ---
 

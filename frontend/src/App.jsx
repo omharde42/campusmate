@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import Header from "./components/Header.jsx";
 import Footer from "./components/Footer.jsx";
 import SourceViewer from "./components/SourceViewer.jsx";
+import HomeIntro from "./pages/HomeIntro.jsx";
+import AuthPage from "./pages/AuthPage.jsx";
 import Landing from "./pages/Landing.jsx";
 import ChatPage from "./pages/ChatPage.jsx";
 import Noticeboard from "./pages/Noticeboard.jsx";
@@ -9,13 +11,25 @@ import Tickets from "./pages/Tickets.jsx";
 import HowItWorks from "./pages/HowItWorks.jsx";
 import TestingPlan from "./pages/TestingPlan.jsx";
 import AdminWorkspace from "./pages/AdminWorkspace.jsx";
-import { getMode } from "./lib/api.js";
+import {
+  currentStudent,
+  getMode,
+  isStudentLoggedIn,
+  refreshStudent,
+  studentLogout,
+} from "./lib/api.js";
+
+// Pages a signed-in student may reach. The home intro, noticeboard and the
+// information pages stay public; the chatbot and tickets require a student
+// account.
+const STUDENT_ONLY = new Set(["chat", "tickets"]);
 
 /**
  * CampusMate application shell.
  *
  * Holds global appearance/accessibility state, the active page, the shared chat
- * context and the source viewer. Pages are modular components under `pages/`.
+ * context, the source viewer and the student session. Pages are modular
+ * components under `pages/`.
  */
 export default function App() {
   const [page, setPage] = useState("home");
@@ -25,10 +39,18 @@ export default function App() {
   const [reduceMotion, setReduceMotion] = useState(localStorage.getItem("cm-motion") === "true");
   const [mode, setMode] = useState(getMode());
 
+  const [studentAccount, setStudentAccount] = useState(currentStudent());
+  const [authMode, setAuthMode] = useState("signin");
+
   const [chatContext, setChatContext] = useState({});
   const [pendingQuestion, setPendingQuestion] = useState(null);
   const [sourceCitation, setSourceCitation] = useState(null);
   const [ticketPreset, setTicketPreset] = useState(null);
+
+  useEffect(() => {
+    if (isStudentLoggedIn())
+      refreshStudent().then((account) => account && setStudentAccount(account));
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -49,6 +71,12 @@ export default function App() {
 
   const navigate = useCallback(
     (next) => {
+      // The chatbot and tickets are for signed-in students. Send visitors to the
+      // auth page instead of the protected page.
+      if (STUDENT_ONLY.has(next) && !isStudentLoggedIn()) {
+        setAuthMode("signin");
+        next = "auth";
+      }
       setPage(next);
       window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
       setMode(getMode());
@@ -56,24 +84,55 @@ export default function App() {
     [reduceMotion]
   );
 
-  const handleAsk = useCallback(
-    (question) => {
-      setPendingQuestion(question);
-      navigate("chat");
+  const openAuth = useCallback(
+    (which) => {
+      setAuthMode(which);
+      navigate("auth");
     },
     [navigate]
   );
 
+  const handleStudentAuthed = useCallback(() => {
+    setStudentAccount(currentStudent());
+    setPage("chat");
+    window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+  }, [reduceMotion]);
+
+  const handleStudentLogout = useCallback(() => {
+    studentLogout();
+    setStudentAccount(null);
+    setPage("home");
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, []);
+
+  const handleAsk = useCallback(
+    (question) => {
+      if (!isStudentLoggedIn()) {
+        openAuth("signin");
+        return;
+      }
+      setPendingQuestion(question);
+      navigate("chat");
+    },
+    [navigate, openAuth]
+  );
+
   const handleRaiseTicket = useCallback(
     (result) => {
+      if (!isStudentLoggedIn()) {
+        openAuth("signin");
+        return;
+      }
       setTicketPreset({
         category: result?.category || undefined,
         description: result?.answer ? `Related to: ${result.answer}` : "",
       });
       navigate("tickets");
     },
-    [navigate]
+    [navigate, openAuth]
   );
+
+  const student = isStudentLoggedIn() ? studentAccount : null;
 
   return (
     <div className="app-shell">
@@ -89,9 +148,31 @@ export default function App() {
         reduceMotion={reduceMotion}
         onReduceMotion={() => setReduceMotion((v) => !v)}
         mode={mode}
+        student={student}
+        onSignIn={() => openAuth("signin")}
+        onSignUp={() => openAuth("signup")}
+        onLogout={handleStudentLogout}
       />
 
-      {page === "home" && <Landing onNavigate={navigate} onAsk={handleAsk} />}
+      {page === "home" &&
+        (student ? (
+          <Landing onNavigate={navigate} onAsk={handleAsk} />
+        ) : (
+          <HomeIntro
+            student={student}
+            onNavigate={navigate}
+            onSignIn={() => openAuth("signin")}
+            onSignUp={() => openAuth("signup")}
+          />
+        ))}
+      {page === "auth" && (
+        <AuthPage
+          key={authMode}
+          initialMode={authMode}
+          onNavigate={navigate}
+          onAuthed={handleStudentAuthed}
+        />
+      )}
       {page === "chat" && (
         <ChatPage
           context={chatContext}
@@ -109,7 +190,7 @@ export default function App() {
       {page === "testing" && <TestingPlan />}
       {page === "admin" && <AdminWorkspace />}
 
-      <Footer onNavigate={navigate} />
+      <Footer onNavigate={navigate} student={student} />
 
       <SourceViewer citation={sourceCitation} onClose={() => setSourceCitation(null)} />
     </div>

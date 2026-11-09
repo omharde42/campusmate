@@ -7,7 +7,6 @@ import {
   Landmark,
   ShieldCheck,
   Sparkles,
-  Ticket,
 } from "lucide-react";
 import Mascot from "../components/Mascot.jsx";
 import { PROBLEMS, TOPICS, WORKFLOW, SAMPLE_CONVERSATION } from "../lib/sampleData.js";
@@ -272,8 +271,8 @@ export default function Landing({ onNavigate, onAsk }) {
           <button className="btn btn-primary" onClick={() => onNavigate("chat")}>
             <Sparkles size={16} /> Ask CampusMate
           </button>
-          <button className="btn btn-outline" onClick={() => onNavigate("admin")}>
-            <Ticket size={16} /> Admin workspace
+          <button className="btn btn-outline" onClick={() => onNavigate("notices")}>
+            <FileText size={16} /> Browse noticeboard
           </button>
         </div>
       </section>

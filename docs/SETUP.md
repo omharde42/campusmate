@@ -37,14 +37,25 @@ npm run dev
 The first backend start seeds synthetic sample notices. The Vite dev server
 proxies `/api` to the backend.
 
-### Demo admin credentials (sample only)
+### Accounts
+
+**Students** create their own account from the public **Create account** page,
+then sign in to reach the chatbot, noticeboard and helpdesk tickets. Account
+details (name, email, hashed password, optional programme/semester) are stored
+in the `students` table.
+
+**Admin (staff)** accounts are provisioned from the environment — there is no
+public admin sign-up and no credentials are shown in the UI. The demo admin is
+created on first start from:
 
 ```
-email:    admin@campusmate.demo
-password: campusmate-demo
+SEED_ADMIN_EMAIL     # e.g. admin@your-college.example
+SEED_ADMIN_PASSWORD  # leave empty to skip creating a demo admin
+SEED_ADMIN_NAME
 ```
 
-Override with `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_ADMIN_NAME`.
+Set these (plus a strong `SECRET_KEY`) in your environment or hosting provider;
+never commit them to the repository.
 
 ---
 
@@ -135,16 +146,42 @@ DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
 `postgres://` URLs (as some providers hand out) are normalised to
 `postgresql://` automatically.
 
+#### Using Supabase for persistence
+
+Supabase is a hosted PostgreSQL provider that works here with no code changes —
+the `students` table (and every other table) is created automatically on first
+start. In the Supabase dashboard:
+
+1. **Project → Settings → Database → Connection string** and copy the **URI**.
+2. Prefer the **Connection pooling** URI (host `aws-0-<region>.pooler.supabase.com`,
+   port `6543`) for serverless Vercel Functions. Replace the password
+   placeholder with your database password.
+3. Make sure the URL ends with `?sslmode=require`.
+4. In Vercel set the environment variable (Settings → Environment Variables):
+
+   ```
+   DATABASE_URL=postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres?sslmode=require
+   ```
+
+   Optionally also set `SECRET_KEY`, `SEED_ADMIN_EMAIL` and
+   `SEED_ADMIN_PASSWORD` (private staff login). Then redeploy.
+
+That single `DATABASE_URL` value is the only database secret you need to import
+into Vercel — student sign-ups then persist in Supabase instead of the
+ephemeral `/tmp` SQLite file. If the `vector` extension is not enabled, enable it
+under **Database → Extensions** (pgvector); the app also runs without it using
+the JSON embedding fallback.
+
 ### Required environment variables (Vercel)
 
 Set these in **Project → Settings → Environment Variables**:
 
 | Variable | Required? | Notes |
 | --- | --- | --- |
-| `SECRET_KEY` | Yes | Long random string; signs admin JWTs. Do not use the default. |
-| `DATABASE_URL` | For persistence | Hosted PostgreSQL URL. Omit for the ephemeral `/tmp` demo. |
+| `SECRET_KEY` | Yes | Long random string; signs admin **and student** JWTs. Do not use the default. |
+| `DATABASE_URL` | For persistence | Hosted PostgreSQL (e.g. Supabase/Neon). Omit for the ephemeral `/tmp` demo. |
 | `CAMPUSMATE_SEED` | Optional | `1` (default) seeds the sample notices; `0` starts empty. |
-| `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | Optional | Override the demo admin credentials. |
+| `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | Recommended | Private staff login. No admin credentials are shown in the UI; set these in the environment so no secret lives in the repository. |
 | `LLM_PROVIDER` / `LLM_API_KEY` | Optional | `openai` + key to use a hosted model; default offline `stub`. |
 | `EMBEDDING_PROVIDER` / `EMBEDDING_API_KEY` | Optional | `openai` + key to use hosted embeddings; default `hashing`. |
 

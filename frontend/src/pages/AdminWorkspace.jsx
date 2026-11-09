@@ -102,8 +102,8 @@ export default function AdminWorkspace() {
 }
 
 function AdminLogin({ onSuccess }) {
-  const [email, setEmail] = useState("admin@campusmate.demo");
-  const [password, setPassword] = useState("campusmate-demo");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -132,7 +132,8 @@ function AdminLogin({ onSuccess }) {
         </h1>
         <p className="auth-sub">
           Administrative functions are separate from public student access and require
-          authentication.
+          authentication. Credentials are provisioned by the deployment and are never
+          displayed here.
         </p>
         <form onSubmit={submit}>
           <label>
@@ -165,8 +166,8 @@ function AdminLogin({ onSuccess }) {
           </button>
         </form>
         <p className="demo-warning">
-          <ShieldCheck size={15} /> Demo credentials are pre-filled. Change the seed
-          credentials and JWT secret before any real deployment.
+          <ShieldCheck size={15} /> Admin credentials are set through the hosting
+          environment variables (never committed to the repository).
         </p>
       </div>
     </main>

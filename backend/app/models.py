@@ -40,6 +40,8 @@ def _utcnow() -> datetime:
 
 
 class Admin(Base):
+    """College staff account. Admin credentials are never shown in the UI."""
+
     __tablename__ = "admins"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -48,6 +50,21 @@ class Admin(Base):
     hashed_password: Mapped[str] = mapped_column(String(255))
     # Role-based access: "admin" may upload/publish, "viewer" may only read.
     role: Mapped[str] = mapped_column(String(32), default="admin")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+
+class Student(Base):
+    """Student account created through the public sign-up page."""
+
+    __tablename__ = "students"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    full_name: Mapped[str] = mapped_column(String(255))
+    hashed_password: Mapped[str] = mapped_column(String(255))
+    programme: Mapped[str | None] = mapped_column(String(64))
+    semester: Mapped[str | None] = mapped_column(String(16))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 

@@ -15,15 +15,18 @@ cd backend && uvicorn app.main:app --reload --port 8000
 cd frontend && npm run dev
 ```
 
-Open the frontend, keep the admin workspace tab ready, and have the demo
-credentials to hand: `admin@campusmate.demo` / `campusmate-demo`.
+Open the frontend. The public home intro appears first; click **Create account**
+to register a student (or **Sign in** if you already have one). Keep a second tab
+for the admin workspace, where you sign in with the private staff credentials
+supplied through your environment (`SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`) —
+they are not shown in the UI.
 
 ---
 
 ## 0–20s — Routine question with a source
 
-1. On the landing page, click **Ask CampusMate**.
-2. Type or click: *"Which documents do I need?"*
+1. On the home intro, click **Create account** and register a student.
+2. On the chatbot page, type or click: *"Which documents do I need?"*
 3. The answer returns as `answered` with a source card.
 4. Click the source card to open the sample notice PDF at the cited page.
 

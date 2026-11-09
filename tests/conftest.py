@@ -23,6 +23,13 @@ os.environ.setdefault("CAMPUSMATE_SEED", "1")
 os.environ.setdefault("LLM_PROVIDER", "stub")
 os.environ.setdefault("EMBEDDING_PROVIDER", "hashing")
 
+# The admin account is provisioned from the environment (no default password is
+# committed). Tests supply their own private credentials here.
+TEST_ADMIN_EMAIL = "admin@campusmate-tests.edu"
+TEST_ADMIN_PASSWORD = "test-admin-password"
+os.environ.setdefault("SEED_ADMIN_EMAIL", TEST_ADMIN_EMAIL)
+os.environ.setdefault("SEED_ADMIN_PASSWORD", TEST_ADMIN_PASSWORD)
+
 BACKEND = Path(__file__).resolve().parents[1] / "backend"
 sys.path.insert(0, str(BACKEND))
 
@@ -41,7 +48,10 @@ def client():
 def admin_token(client) -> str:
     resp = client.post(
         "/auth/login",
-        json={"email": "admin@campusmate.demo", "password": "campusmate-demo"},
+        json={
+            "email": os.environ["SEED_ADMIN_EMAIL"],
+            "password": os.environ["SEED_ADMIN_PASSWORD"],
+        },
     )
     assert resp.status_code == 200, resp.text
     return resp.json()["access_token"]

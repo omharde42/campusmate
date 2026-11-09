@@ -25,6 +25,23 @@ CREATE TABLE IF NOT EXISTS admins (
 );
 
 -- ---------------------------------------------------------------------------
+-- Student accounts (public sign-up / sign-in)
+-- Students create their own account before using the chatbot. Only the bcrypt
+-- password hash is stored; the plain password is never persisted.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS students (
+    id              SERIAL PRIMARY KEY,
+    email           VARCHAR(255) NOT NULL UNIQUE,
+    full_name       VARCHAR(255) NOT NULL,
+    hashed_password VARCHAR(255) NOT NULL,
+    programme       VARCHAR(64),
+    semester        VARCHAR(16),
+    is_active       BOOLEAN      NOT NULL DEFAULT TRUE,
+    created_at      TIMESTAMP    NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS ix_students_email ON students (email);
+
+-- ---------------------------------------------------------------------------
 -- Knowledge versions
 -- A version is a snapshot of the approved knowledge base. Only one row has
 -- is_active = TRUE at a time, so answers are always served from a single
